@@ -7,6 +7,25 @@ var helmet = require('helmet');
 var session = require('express-session');
 var passport = require('passport');
 
+//モデルの読み込み
+var User = require('./models/user');
+var Schedule = require('./models/schedule');
+var Availability = require('./models/availability');
+var Candidate = require('./models/candidate');
+var Comment = require('./models/comment');
+//従属エンティティの定義
+User.sync().then(() => {
+  Schedule.belongsTo(User, {foreignKey: 'createdBy'});
+  Schedule.sync();
+  Comment.belongsTo(User, {foreignKey: 'userId'});
+  Comment.sync();
+  Availability.belongsTo(User, {foreignKey: 'userId'});
+  Candidate.sync().then(() => {
+    Availability.belongsTo(Candidate, {foreignKey: 'candidateId'});
+    Availability.sync();
+  });
+});
+
 var GitHubStrategy = require('passport-github2').Strategy;
 var GITHUB_CLIENT_ID = '92bd150975735732ee89';
 var GITHUB_CLIENT_SECRET = '305fca705a7deaffbeea3463772f75361acdb6fc';
@@ -25,8 +44,15 @@ passport.use(new GitHubStrategy({
   callbackURL: 'http://localhost:8000/auth/github/callback'
 },
   function(accessToken,refreshToken,profile,done) {
+    //GitHub認証が実行されたときの処理
     process.nextTick(function() {
-      return done(null,profile);
+      //ユーザーidとユーザー名をUserテーブルに保存
+      User.upsert({
+        userId: profile.id,
+        username: profile.username
+      }).then(() => {
+        done(null,profile);
+      });
     });
   }
 ));
@@ -49,7 +75,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 //githubのoauth設定と初期化
-app.use(session({ secret: '1e99c8d25ea9ae25' , resave: false , saveUninitialized: false }));
+app.use(session({ secret: '5fa8fcc04eaaae01' , resave: false , saveUninitialized: false }));
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -64,6 +90,7 @@ app.get('/auth/github',
   function(req,res) {}
 );
 
+//コールバック処理
 app.get('/auth/github/callback',
   passport.authenticate('github', { failureRedirect: '/login' }),
   function(req,res) {
