@@ -61,6 +61,7 @@ var indexRouter = require('./routes/index');
 var loginRouter = require('./routes/login');
 var logoutRouter = require('./routes/logout');
 var scheduleRouter = require('./routes/schedules');
+var availabilitiesRouter = require('./routes/availabilities');
 
 var app = express();
 app.use(helmet());
@@ -85,6 +86,7 @@ app.use('/', indexRouter);
 app.use('/login', loginRouter);
 app.use('/logout', logoutRouter);
 app.use('/schedules', scheduleRouter);
+app.use('/schedules',availabilitiesRouter);
 
 //github認証の処理 (scopeの部分がよくわからん)
 app.get('/auth/github', 
